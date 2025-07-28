@@ -10,6 +10,8 @@ cordova plugin add https://github.com/romanlazurenko/cordova-plugin-dndcheck.git
 
 ## Usage
 
+### Basic Example
+
 ```javascript
 // Check if DND is enabled
 cordova.plugins.DndCheck.isDndEnabled(
@@ -29,6 +31,46 @@ cordova.plugins.DndCheck.isDndEnabled(
         playSound();
     }
 );
+```
+
+### Vue.js Example
+
+```javascript
+// In your Vue component
+methods: {
+    playMP3() {
+        // Check DND status first if on Android
+        if (this.isAndroid && window.cordova?.plugins?.DndCheck) {
+            console.log("Checking DND state using native plugin...");
+            window.cordova.plugins.DndCheck.isDndEnabled(
+                (isDndEnabled) => {
+                    console.log("DND is enabled:", isDndEnabled);
+                    if (isDndEnabled) {
+                        // DND is enabled, don't play sound
+                        console.log("DND is on, skipping sound");
+                    } else {
+                        // DND is disabled, play sound
+                        this._playSound();
+                    }
+                },
+                (error) => {
+                    console.error("Error checking DND state:", error);
+                    // Fallback: play sound anyway
+                    this._playSound();
+                }
+            );
+        } else {
+            // Not Android or plugin not available, play sound directly
+            this._playSound();
+        }
+    },
+
+    _playSound() {
+        // Your sound playing logic here
+        const audio = new Audio('/yoursound.mp3');
+        audio.play();
+    }
+}
 ```
 
 ## API

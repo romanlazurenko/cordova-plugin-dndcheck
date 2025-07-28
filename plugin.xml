@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        id="cordova-plugin-dndcheck"
+        version="1.0.0">
+    
+    <name>DndCheck</name>
+    <description>Cordova plugin to check Do Not Disturb state on Android</description>
+    <license>MIT</license>
+    <keywords>cordova,android,dnd,do not disturb</keywords>
+    <author>Roman Lazurenko</author>
+    
+    <engines>
+        <engine name="cordova" version=">=6.0.0" />
+        <engine name="cordova-android" version=">=6.0.0" />
+    </engines>
+    
+    <js-module src="www/dndcheck.js" name="DndCheck">
+        <clobbers target="cordova.plugins.DndCheck" />
+    </js-module>
+    
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="DndCheck">
+                <param name="android-package" value="com.romanlazurenko.dndcheck.DndCheckPlugin" />
+            </feature>
+        </config-file>
+        
+        <source-file src="src/android/DndCheckPlugin.java" target-dir="src/main/java/com/romanlazurenko/dndcheck" />
+        
+        <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    </platform>
+</plugin> 

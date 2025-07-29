@@ -15,8 +15,12 @@
     "ecosystem:cordova",
     "cordova-android"
   ],
-  "author": "Roman Lazurenko",
+  "author": "Roman Lazurenko <dgugik@ukr.net>",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/romanlazurenko/cordova-plugin-dndcheck/issues"
+  },
+  "homepage": "https://github.com/romanlazurenko/cordova-plugin-dndcheck#readme",
   "engines": {
     "cordovaDependencies": {
       "1.0.0": {

@@ -33,11 +33,11 @@
                 }
                 
                 // Return integer (1 for true, 0 for false) to match Android implementation
-                int result = isDndEnabled ? 1 : 0;
-                NSLog(@"[DndCheckPlugin] iOS returning result: %d", result);
+                int resultValue = isDndEnabled ? 1 : 0;
+                NSLog(@"[DndCheckPlugin] iOS returning result: %d", resultValue);
                 
-                CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:isDndEnabled ? 1 : 0];
-                [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+                CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:resultValue];
+                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
             }];
         } else {
             // iOS version < 10.0, return false as safe default

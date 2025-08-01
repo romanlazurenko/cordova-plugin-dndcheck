@@ -83,19 +83,38 @@
 }
 
 - (BOOL)checkSilentMode {
-    // Use a much simpler and non-intrusive approach that doesn't interfere with background audio
-    // This method checks the silent switch without playing any sounds or changing audio session
+    // Use AVAudioSession with soloAmbient category to detect silent mode
+    // This is the most reliable method as it respects the Silent switch
     
     @try {
         AVAudioSession *audioSession = [AVAudioSession sharedInstance];
         
-        // Don't change the audio session category - this prevents interference with background music
-        // Just check the current state without modifying anything
+        // Store current category and options
+        AVAudioSessionCategory originalCategory = audioSession.category;
+        AVAudioSessionCategoryOptions originalOptions = audioSession.categoryOptions;
         
-        // Method 1: Check if the output volume is 0 (might indicate silent mode)
-        float outputVolume = audioSession.outputVolume;
+        // Set to soloAmbient category which is silenced by the Silent switch
+        NSError *error = nil;
+        [audioSession setCategory:AVAudioSessionCategorySoloAmbient error:&error];
         
-        // Method 2: Check audio route for silent mode indicators
+        if (error) {
+            NSLog(@"[DndCheckPlugin] Error setting soloAmbient category: %@", error.localizedDescription);
+            return NO;
+        }
+        
+        // Activate the session
+        [audioSession setActive:YES error:&error];
+        
+        if (error) {
+            NSLog(@"[DndCheckPlugin] Error activating audio session: %@", error.localizedDescription);
+            return NO;
+        }
+        
+        // Check if the session is actually playing (this will be affected by Silent switch)
+        // We can detect this by checking if the session is muted
+        BOOL isMuted = audioSession.outputVolume == 0.0;
+        
+        // Also check the current route - if only receiver is available, it might be silent
         AVAudioSessionRouteDescription *route = audioSession.currentRoute;
         BOOL hasReceiver = NO;
         BOOL hasSpeaker = NO;
@@ -108,15 +127,16 @@
             }
         }
         
-        // Determine silent mode based on volume and route only (non-intrusive)
-        BOOL volumeBasedSilent = (outputVolume == 0.0);
-        BOOL routeBasedSilent = hasReceiver && !hasSpeaker; // If only receiver available, might be silent
+        // Restore original category and options
+        [audioSession setCategory:originalCategory withOptions:originalOptions error:nil];
         
-        // Combine methods for more reliable detection
+        // Determine silent mode
+        BOOL volumeBasedSilent = isMuted;
+        BOOL routeBasedSilent = hasReceiver && !hasSpeaker;
         BOOL isSilent = volumeBasedSilent || routeBasedSilent;
         
-        NSLog(@"[DndCheckPlugin] Silent mode detection - Volume: %.2f, Route (Receiver: %@, Speaker: %@), Final result: %@", 
-              outputVolume, hasReceiver ? @"YES" : @"NO", hasSpeaker ? @"YES" : @"NO", 
+        NSLog(@"[DndCheckPlugin] Silent mode detection (soloAmbient) - Volume: %.2f, Route (Receiver: %@, Speaker: %@), Final result: %@", 
+              audioSession.outputVolume, hasReceiver ? @"YES" : @"NO", hasSpeaker ? @"YES" : @"NO", 
               isSilent ? @"SILENT" : @"NOT_SILENT");
         
         return isSilent;

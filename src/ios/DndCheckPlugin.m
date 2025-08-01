@@ -143,7 +143,7 @@ static void soundCompletionCallback(SystemSoundID ssID, void* clientData) {
         __block BOOL completionCalled = NO;
         
         // Set completion callback using a C function
-        AudioServicesAddSystemSoundCompletion(soundID, NULL, NULL, soundCompletionCallback, (__bridge void *)(&completionCalled));
+        AudioServicesAddSystemSoundCompletion(soundID, NULL, NULL, soundCompletionCallback, (void *)(&completionCalled));
         
         // Play the sound
         AudioServicesPlaySystemSound(soundID);

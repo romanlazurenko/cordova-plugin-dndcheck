@@ -3,6 +3,14 @@
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 
+// C callback function for AudioServices completion
+static void soundCompletionCallback(SystemSoundID ssID, void* clientData) {
+    BOOL* completionFlag = (BOOL*)clientData;
+    if (completionFlag) {
+        *completionFlag = YES;
+    }
+}
+
 @implementation DndCheckPlugin
 
 - (void)isDndEnabled:(CDVInvokedUrlCommand*)command {
@@ -134,11 +142,8 @@
         __block BOOL soundPlayed = NO;
         __block BOOL completionCalled = NO;
         
-        // Set completion callback
-        AudioServicesAddSystemSoundCompletion(soundID, NULL, NULL, ^(SystemSoundID ssID, void* clientData) {
-            soundPlayed = YES;
-            completionCalled = YES;
-        }, NULL);
+        // Set completion callback using a C function
+        AudioServicesAddSystemSoundCompletion(soundID, NULL, NULL, soundCompletionCallback, (__bridge void *)(&completionCalled));
         
         // Play the sound
         AudioServicesPlaySystemSound(soundID);

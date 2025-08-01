@@ -119,24 +119,10 @@ static void soundCompletionCallback(SystemSoundID ssID, void* clientData) {
             return NO;
         }
         
-        // Create a SystemSoundID for testing
-        SystemSoundID soundID;
+        // Use a system sound that definitely respects the silent switch
+        SystemSoundID soundID = 1007; // System sound that respects silent switch (more reliable)
         
-        // Create a very short silent audio file URL
-        NSString *soundPath = [[NSBundle mainBundle] pathForResource:@"silent" ofType:@"wav"];
-        NSURL *soundURL = nil;
-        
-        if (soundPath) {
-            soundURL = [NSURL fileURLWithPath:soundPath];
-        } else {
-            // If no silent file exists, create one programmatically or use system sound
-            // Use system sound ID for click (which respects silent mode)
-            soundID = 1104; // System sound that respects silent switch
-        }
-        
-        if (soundURL) {
-            AudioServicesCreateSystemSoundID((__bridge CFURLRef)soundURL, &soundID);
-        }
+        NSLog(@"[DndCheckPlugin] Using system sound ID: %u", (unsigned int)soundID);
         
         // Test by checking if we can play sound
         __block BOOL soundPlayed = NO;
@@ -156,18 +142,16 @@ static void soundCompletionCallback(SystemSoundID ssID, void* clientData) {
         
         // Clean up
         AudioServicesRemoveSystemSoundCompletion(soundID);
-        if (soundURL) {
-            AudioServicesDisposeSystemSoundID(soundID);
-        }
         
         // Restore original audio session category
         [audioSession setCategory:originalCategory error:nil];
         
-        // If completion wasn't called, likely in silent mode
+        // If completion was called, sound played (silent mode is OFF)
+        // If completion wasn't called, sound didn't play (silent mode is ON)
         BOOL isSilent = !completionCalled;
         
-        NSLog(@"[DndCheckPlugin] Silent mode test - Sound played: %@, Completion called: %@, Silent mode: %@", 
-              soundPlayed ? @"YES" : @"NO", completionCalled ? @"YES" : @"NO", isSilent ? @"YES" : @"NO");
+        NSLog(@"[DndCheckPlugin] Silent mode test - Completion called: %@, Silent mode: %@", 
+              completionCalled ? @"YES" : @"NO", isSilent ? @"YES" : @"NO");
         
         return isSilent;
         

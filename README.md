@@ -140,15 +140,20 @@ Checks if Do Not Disturb mode is enabled on the device.
 
 - Cordova >= 6.0.0
 - Android >= 6.0.0 (API level 23+)
+- iOS >= 10.0
 - Android permission: `ACCESS_NOTIFICATION_POLICY`
 
-> **Note**: This plugin requires the `ACCESS_NOTIFICATION_POLICY` permission to check DND state on Android. The permission is automatically added to your app's manifest when you install the plugin.
+> **Note**: 
+> - This plugin requires the `ACCESS_NOTIFICATION_POLICY` permission to check DND state on Android. The permission is automatically added to your app's manifest when you install the plugin.
+> - On iOS, the plugin uses the UserNotifications framework to check notification authorization status as a proxy for DND state.
 
 ## Platform Support
 
 - ✅ Android 6.0+ (API 23+)
-- ❌ iOS (not implemented)
+- ✅ iOS 10.0+ (limited functionality)
 - ❌ Browser (not implemented)
+
+> **Note**: On iOS, due to privacy restrictions, the plugin cannot directly check DND state. It returns a safe default (DND disabled) when notifications are authorized, and treats unauthorized notifications as DND enabled.
 
 ## License
 

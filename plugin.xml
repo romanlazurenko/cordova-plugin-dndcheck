@@ -30,4 +30,17 @@
         
         <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     </platform>
+    
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="DndCheck">
+                <param name="ios-package" value="DndCheckPlugin" />
+            </feature>
+        </config-file>
+        
+        <source-file src="src/ios/DndCheckPlugin.h" />
+        <source-file src="src/ios/DndCheckPlugin.m" />
+        
+        <framework src="UserNotifications.framework" />
+    </platform>
 </plugin> 

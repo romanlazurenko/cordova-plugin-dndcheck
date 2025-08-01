@@ -42,6 +42,5 @@
         <source-file src="src/ios/DndCheckPlugin.m" />
         
         <framework src="UserNotifications.framework" />
-        <framework src="AudioToolbox.framework" />
     </platform>
 </plugin> 

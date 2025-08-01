@@ -1,15 +1,6 @@
 #import "DndCheckPlugin.h"
 #import <UserNotifications/UserNotifications.h>
 #import <AVFoundation/AVFoundation.h>
-#import <AudioToolbox/AudioToolbox.h>
-
-// C callback function for AudioServices completion
-static void soundCompletionCallback(SystemSoundID ssID, void* clientData) {
-    BOOL* completionFlag = (BOOL*)clientData;
-    if (completionFlag) {
-        *completionFlag = YES;
-    }
-}
 
 @implementation DndCheckPlugin
 
@@ -117,37 +108,16 @@ static void soundCompletionCallback(SystemSoundID ssID, void* clientData) {
             }
         }
         
-        // Method 3: Use a very lightweight system sound test that doesn't interfere
-        // Use kSystemSoundID_Vibrate which respects silent mode but doesn't play audio
-        __block BOOL vibrationCompleted = NO;
-        
-        // Set up vibration completion callback
-        AudioServicesAddSystemSoundCompletion(kSystemSoundID_Vibrate, NULL, NULL, 
-                                             soundCompletionCallback, (void *)(&vibrationCompleted));
-        
-        // Trigger vibration (this respects silent mode)
-        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);
-        
-        // Wait briefly for completion
-        NSDate *timeout = [NSDate dateWithTimeIntervalSinceNow:0.05];
-        while (!vibrationCompleted && [timeout timeIntervalSinceNow] > 0) {
-            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
-        }
-        
-        // Clean up
-        AudioServicesRemoveSystemSoundCompletion(kSystemSoundID_Vibrate);
-        
-        // Determine silent mode based on multiple factors
+        // Determine silent mode based on volume and route only (non-intrusive)
         BOOL volumeBasedSilent = (outputVolume == 0.0);
         BOOL routeBasedSilent = hasReceiver && !hasSpeaker; // If only receiver available, might be silent
-        BOOL vibrationBasedSilent = !vibrationCompleted;
         
         // Combine methods for more reliable detection
-        BOOL isSilent = volumeBasedSilent || vibrationBasedSilent;
+        BOOL isSilent = volumeBasedSilent || routeBasedSilent;
         
-        NSLog(@"[DndCheckPlugin] Silent mode detection - Volume: %.2f, Route (Receiver: %@, Speaker: %@), Vibration completed: %@, Final result: %@", 
+        NSLog(@"[DndCheckPlugin] Silent mode detection - Volume: %.2f, Route (Receiver: %@, Speaker: %@), Final result: %@", 
               outputVolume, hasReceiver ? @"YES" : @"NO", hasSpeaker ? @"YES" : @"NO", 
-              vibrationCompleted ? @"YES" : @"NO", isSilent ? @"SILENT" : @"NOT_SILENT");
+              isSilent ? @"SILENT" : @"NOT_SILENT");
         
         return isSilent;
         

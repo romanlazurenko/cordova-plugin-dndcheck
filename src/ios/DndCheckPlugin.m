@@ -92,66 +92,62 @@ static void soundCompletionCallback(SystemSoundID ssID, void* clientData) {
 }
 
 - (BOOL)checkSilentMode {
-    // This method uses the most reliable approach for detecting silent mode
-    // by attempting to play a very short audio file and measuring the duration
+    // Use a much simpler and non-intrusive approach that doesn't interfere with background audio
+    // This method checks the silent switch without playing any sounds or changing audio session
     
     @try {
         AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-        NSError *error = nil;
         
-        // Store current category
-        AVAudioSessionCategory originalCategory = audioSession.category;
+        // Don't change the audio session category - this prevents interference with background music
+        // Just check the current state without modifying anything
         
-        // Set category to playback to test silent mode
-        [audioSession setCategory:AVAudioSessionCategoryPlayback 
-                      withOptions:AVAudioSessionCategoryOptionMixWithOthers 
-                            error:&error];
+        // Method 1: Check if the output volume is 0 (might indicate silent mode)
+        float outputVolume = audioSession.outputVolume;
         
-        if (error) {
-            NSLog(@"[DndCheckPlugin] Error setting audio category: %@", error.localizedDescription);
-            return NO;
+        // Method 2: Check audio route for silent mode indicators
+        AVAudioSessionRouteDescription *route = audioSession.currentRoute;
+        BOOL hasReceiver = NO;
+        BOOL hasSpeaker = NO;
+        
+        for (AVAudioSessionPortDescription *output in route.outputs) {
+            if ([output.portType isEqualToString:AVAudioSessionPortBuiltInReceiver]) {
+                hasReceiver = YES;
+            } else if ([output.portType isEqualToString:AVAudioSessionPortBuiltInSpeaker]) {
+                hasSpeaker = YES;
+            }
         }
         
-        [audioSession setActive:YES error:&error];
+        // Method 3: Use a very lightweight system sound test that doesn't interfere
+        // Use kSystemSoundID_Vibrate which respects silent mode but doesn't play audio
+        __block BOOL vibrationCompleted = NO;
         
-        if (error) {
-            NSLog(@"[DndCheckPlugin] Error activating audio session: %@", error.localizedDescription);
-            return NO;
-        }
+        // Set up vibration completion callback
+        AudioServicesAddSystemSoundCompletion(kSystemSoundID_Vibrate, NULL, NULL, 
+                                             soundCompletionCallback, (void *)(&vibrationCompleted));
         
-        // Use a system sound that definitely respects the silent switch
-        SystemSoundID soundID = 1007; // System sound that respects silent switch (more reliable)
-        
-        NSLog(@"[DndCheckPlugin] Using system sound ID: %u", (unsigned int)soundID);
-        
-        // Test by checking if we can play sound
-        __block BOOL soundPlayed = NO;
-        __block BOOL completionCalled = NO;
-        
-        // Set completion callback using a C function
-        AudioServicesAddSystemSoundCompletion(soundID, NULL, NULL, soundCompletionCallback, (void *)(&completionCalled));
-        
-        // Play the sound
-        AudioServicesPlaySystemSound(soundID);
+        // Trigger vibration (this respects silent mode)
+        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);
         
         // Wait briefly for completion
-        NSDate *timeout = [NSDate dateWithTimeIntervalSinceNow:0.1];
-        while (!completionCalled && [timeout timeIntervalSinceNow] > 0) {
+        NSDate *timeout = [NSDate dateWithTimeIntervalSinceNow:0.05];
+        while (!vibrationCompleted && [timeout timeIntervalSinceNow] > 0) {
             [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
         }
         
         // Clean up
-        AudioServicesRemoveSystemSoundCompletion(soundID);
+        AudioServicesRemoveSystemSoundCompletion(kSystemSoundID_Vibrate);
         
-        // Restore original audio session category
-        [audioSession setCategory:originalCategory error:nil];
+        // Determine silent mode based on multiple factors
+        BOOL volumeBasedSilent = (outputVolume == 0.0);
+        BOOL routeBasedSilent = hasReceiver && !hasSpeaker; // If only receiver available, might be silent
+        BOOL vibrationBasedSilent = !vibrationCompleted;
         
-        // If completion was called, sound played (silent mode is OFF)
-        // If completion wasn't called, sound didn't play (silent mode is ON)
-        BOOL isSilent = !completionCalled;
+        // Combine methods for more reliable detection
+        BOOL isSilent = volumeBasedSilent || vibrationBasedSilent;
         
-        NSLog(@"[DndCheckPlugin] Silent mode test - Completion called: %@, Silent mode: %@", 
-              completionCalled ? @"YES" : @"NO", isSilent ? @"YES" : @"NO");
+        NSLog(@"[DndCheckPlugin] Silent mode detection - Volume: %.2f, Route (Receiver: %@, Speaker: %@), Vibration completed: %@, Final result: %@", 
+              outputVolume, hasReceiver ? @"YES" : @"NO", hasSpeaker ? @"YES" : @"NO", 
+              vibrationCompleted ? @"YES" : @"NO", isSilent ? @"SILENT" : @"NOT_SILENT");
         
         return isSilent;
         

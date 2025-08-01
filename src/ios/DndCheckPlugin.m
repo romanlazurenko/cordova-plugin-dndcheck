@@ -1,14 +1,6 @@
-#import <Cordova/CDV.h>
+#import "DndCheckPlugin.h"
 #import <UserNotifications/UserNotifications.h>
 #import <AVFoundation/AVFoundation.h>
-
-@interface DndCheckPlugin : CDVPlugin
-
-- (void)isDndEnabled:(CDVInvokedUrlCommand*)command;
-
-@end
-
-#import "DndCheckPlugin.h"
 
 @implementation DndCheckPlugin
 

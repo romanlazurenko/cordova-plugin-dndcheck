@@ -1,11 +1,18 @@
-#import "DndCheckPlugin.h"
+#import <Cordova/CDV.h>
 #import <UserNotifications/UserNotifications.h>
+#import <AVFoundation/AVFoundation.h>
+
+@interface DndCheckPlugin : CDVPlugin
+
+- (void)isDndEnabled:(CDVInvokedUrlCommand*)command;
+
+@end
+
+#import "DndCheckPlugin.h"
 
 @implementation DndCheckPlugin
 
 - (void)isDndEnabled:(CDVInvokedUrlCommand*)command {
-    CDVPluginResult* pluginResult = nil;
-    
     NSLog(@"[DndCheckPlugin] isDndEnabled called from iOS native code");
     
     @try {
@@ -13,28 +20,11 @@
             UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
             
             [center getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings * _Nonnull settings) {
-                BOOL isDndEnabled = NO;
-                
-                // Check if notifications are authorized and if DND might be active
-                if (settings.authorizationStatus == UNAuthorizationStatusAuthorized) {
-                    // On iOS, we can't directly check DND state due to privacy restrictions
-                    // But we can check if notifications are being delivered
-                    // If notifications are not being delivered, it might be due to DND
-                    
-                    // For now, we'll return false (DND not enabled) as a safe default
-                    // since we can't reliably detect DND state on iOS
-                    isDndEnabled = NO;
-                    
-                    NSLog(@"[DndCheckPlugin] iOS DND check - returning false (safe default)");
-                } else {
-                    // Notifications not authorized, treat as DND enabled
-                    isDndEnabled = YES;
-                    NSLog(@"[DndCheckPlugin] iOS notifications not authorized, treating as DND enabled");
-                }
+                BOOL isDndEnabled = [self checkDndStatus:settings];
                 
                 // Return integer (1 for true, 0 for false) to match Android implementation
                 int resultValue = isDndEnabled ? 1 : 0;
-                NSLog(@"[DndCheckPlugin] iOS returning result: %d", resultValue);
+                NSLog(@"[DndCheckPlugin] iOS DND enabled: %@, returning result: %d", isDndEnabled ? @"YES" : @"NO", resultValue);
                 
                 CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:resultValue];
                 [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -42,14 +32,73 @@
         } else {
             // iOS version < 10.0, return false as safe default
             NSLog(@"[DndCheckPlugin] iOS version < 10.0, returning false");
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:0];
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:0];
             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         }
     } @catch (NSException *exception) {
         NSLog(@"[DndCheckPlugin] iOS Error: %@", exception.reason);
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:[NSString stringWithFormat:@"Error checking DND state: %@", exception.reason]];
+        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:[NSString stringWithFormat:@"Error checking DND state: %@", exception.reason]];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     }
 }
 
-@end 
+- (BOOL)checkDndStatus:(UNNotificationSettings *)settings {
+    // Check if notifications are completely disabled (likely Focus mode)
+    if (settings.authorizationStatus == UNAuthorizationStatusDenied) {
+        NSLog(@"[DndCheckPlugin] Notifications denied - likely Focus mode enabled");
+        return YES;
+    }
+    
+    // Check if notification center is disabled (Focus mode)
+    if (settings.notificationCenterSetting == UNNotificationSettingDisabled) {
+        NSLog(@"[DndCheckPlugin] Notification center disabled - likely Focus mode enabled");
+        return YES;
+    }
+    
+    // Check if lock screen notifications are disabled (Focus mode)
+    if (settings.lockScreenSetting == UNNotificationSettingDisabled) {
+        NSLog(@"[DndCheckPlugin] Lock screen notifications disabled - likely Focus mode enabled");
+        return YES;
+    }
+    
+    // Check if silent mode is enabled (physical switch)
+    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+    NSError *error = nil;
+    [audioSession setActive:YES error:&error];
+    
+    if (error) {
+        NSLog(@"[DndCheckPlugin] Error activating audio session: %@", error.localizedDescription);
+    } else {
+        float outputVolume = audioSession.outputVolume;
+        BOOL isSilent = (outputVolume == 0.0);
+        
+        NSLog(@"[DndCheckPlugin] Audio volume: %.2f, Silent mode: %@", outputVolume, isSilent ? @"YES" : @"NO");
+        
+        if (isSilent) {
+            return YES;
+        }
+    }
+    
+    // Check if alerts are disabled (Focus mode)
+    if (settings.alertSetting == UNNotificationSettingDisabled) {
+        NSLog(@"[DndCheckPlugin] Alerts disabled - likely Focus mode enabled");
+        return YES;
+    }
+    
+    // Check if badges are disabled (Focus mode)
+    if (settings.badgeSetting == UNNotificationSettingDisabled) {
+        NSLog(@"[DndCheckPlugin] Badges disabled - likely Focus mode enabled");
+        return YES;
+    }
+    
+    // Check if sounds are disabled (Focus mode)
+    if (settings.soundSetting == UNNotificationSettingDisabled) {
+        NSLog(@"[DndCheckPlugin] Sounds disabled - likely Focus mode enabled");
+        return YES;
+    }
+    
+    NSLog(@"[DndCheckPlugin] No DND indicators found - DND likely disabled");
+    return NO;
+}
+
+@end
